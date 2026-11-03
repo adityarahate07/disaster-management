@@ -1,0 +1,13 @@
+.venv
+.git
+backups
+notebooks
+scripts
+data/*.csv
+requirements-full.txt
+*.PNG
+*.png
+*.jpg
+logs/*.log
+__pycache__
+*.pyc

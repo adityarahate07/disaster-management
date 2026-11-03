@@ -69,7 +69,9 @@ except Exception:
     def gemini_analyze_text(msg):
         return None
 
-app = Flask(__name__)
+TEMPLATE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "templates"))
+STATIC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "static"))
+app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
 
 def tokenize(text):
     """Tokenize + lemmatize text to match training preprocessing."""
@@ -81,8 +83,22 @@ def tokenize(text):
         clean_tokens.append(clean_tok)
     return clean_tokens
 
-# load data (keep original DB path for SQLAlchemy)
-engine = create_engine('sqlite:///../data/DisasterResponse.db')
+# Path to SQLite DB (supports Vercel serverless /tmp if read-only)
+ORIGINAL_DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "DisasterResponse.db"))
+if os.environ.get("VERCEL"):
+    import shutil
+    TMP_DB_PATH = "/tmp/DisasterResponse.db"
+    if not os.path.exists(TMP_DB_PATH) and os.path.exists(ORIGINAL_DB_PATH):
+        try:
+            shutil.copy2(ORIGINAL_DB_PATH, TMP_DB_PATH)
+        except Exception:
+            pass
+    DB_PATH = TMP_DB_PATH if os.path.exists(TMP_DB_PATH) else ORIGINAL_DB_PATH
+else:
+    DB_PATH = ORIGINAL_DB_PATH
+
+# load data
+engine = create_engine(f'sqlite:///{DB_PATH}')
 try:
     df = pd.read_sql_table('Disasters', engine)
 except Exception:
@@ -159,16 +175,19 @@ keyword_map = {
 }
 
 # Alerts: send email and append audit log
-LOG_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'logs'))
-os.makedirs(LOG_DIR, exist_ok=True)
+if os.environ.get("VERCEL"):
+    LOG_DIR = "/tmp/logs"
+else:
+    LOG_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'logs'))
+try:
+    os.makedirs(LOG_DIR, exist_ok=True)
+except Exception:
+    pass
 ALERT_LOG_PATH = os.path.join(LOG_DIR, 'alerts.log')
 
 # ---------------------------
 # CitizenSOS report processing helpers (location, scoring, helpers)
 # ---------------------------
-
-# Path to the existing SQLite DB used by project (keeps everything in one file)
-DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "DisasterResponse.db"))
 
 # Small emergency keyword list (quick-start)
 EMERGENCY_KEYWORDS = [
