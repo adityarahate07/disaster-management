@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: disaster-management-ai
+    runtime: python
+    buildCommand: pip install -r requirements.txt && python -c "import nltk; nltk.download('punkt', quiet=True); nltk.download('punkt_tab', quiet=True); nltk.download('wordnet', quiet=True)"
+    startCommand: gunicorn --chdir app run:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
